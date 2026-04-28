@@ -61,8 +61,8 @@ st.markdown(
     <style>
       /* Deixa TODOS os selectbox mais compactos (você só tem 1 aqui) */
       div[data-baseweb="select"] > div {
-        min-width: 320px !important;   /* metade de 560px */
-        max-width: 330px !important;   /* não estica demais */
+        min-width: 330px !important;   /* metade de 560px */
+        max-width: 340px !important;   /* não estica demais */
         width: 100% !important;        /* respeita a coluna */
       }
 

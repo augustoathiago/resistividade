@@ -217,7 +217,7 @@ ax.text(res_start_x + res_draw_len/2, res_center_y - 1.10,
         f"L = {L:.2f} m   |   D = {D_mm:.2f} mm", ha="center", va="center", fontsize=10)
 
 # Fio resistor → amperímetro
-ax.plot([res_end_x, amm_cx - amm_r], [res_center_y, res_center_y], linewidth=2, color="yellow")
+ax.plot([res_end_x, amm_cx - amm_r], [res_center_y, res_center_y], linewidth=2, color="green")
 
 # Amperímetro + corrente
 ax.add_patch(Circle((amm_cx, amm_cy), amm_r, fill=False, linewidth=2))
@@ -226,12 +226,12 @@ ax.text(amm_cx, amm_cy + 1.25, f"I = {sci_text(I)} A", ha="center", va="center",
 
 # Fio amperímetro → retorno → fonte
 right_x = min(amm_cx + amm_r + 1.2, XMAX - right_margin)
-ax.plot([amm_cx + amm_r, right_x], [amm_cy, amm_cy], linewidth=2, color="yellow")
+ax.plot([amm_cx + amm_r, right_x], [amm_cy, amm_cy], linewidth=2, color="green")
 
 bottom_y = 1.0
-ax.plot([right_x, right_x], [amm_cy, bottom_y], linewidth=2, color="yellow")
-ax.plot([right_x, source_x], [bottom_y, bottom_y], linewidth=2, color="yellow")
-ax.plot([source_x, source_x], [bottom_y, source_y], linewidth=2, color="yellow")
+ax.plot([right_x, right_x], [amm_cy, bottom_y], linewidth=2, color="green")
+ax.plot([right_x, source_x], [bottom_y, bottom_y], linewidth=2, color="green")
+ax.plot([source_x, source_x], [bottom_y, source_y], linewidth=2, color="green")
 
 # Voltímetro em paralelo acima do resistor (com fio horizontal)
 node_in_x = res_start_x

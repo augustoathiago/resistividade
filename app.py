@@ -58,7 +58,7 @@ st.markdown(
     """
     <style>
       div[data-baseweb="select"] > div { min-width: 560px !important; }
-      @media (max-width: 768px){
+      @media (max-width: 420px){
         div[data-baseweb="select"] > div { min-width: 100% !important; }
       }
     </style>

@@ -4,16 +4,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle
 
 # ==========================================================
-# Formatação: evitar "e+2" e usar "*10^n" (texto e LaTeX)
+# Formatação: evitar "e+2" e usar "*10^n"
 # ==========================================================
 def sci_parts(x):
-    """Retorna (mantissa, expoente) em base 10 para x != 0."""
     exp = int(np.floor(np.log10(abs(x))))
     mant = x / (10 ** exp)
     return mant, exp
 
 def sci_text(x, sig=3):
-    """String em texto: 1.23*10^4 (ou número normal se exp pequeno)."""
+    """Texto: 1.23*10^4 (ou número normal se exp pequeno)."""
     if x == 0:
         return "0"
     mant, exp = sci_parts(x)
@@ -22,7 +21,7 @@ def sci_text(x, sig=3):
     return f"{mant:.{sig}g}*10^{exp}"
 
 def sci_latex(x, sig=3):
-    """String em LaTeX: 1.23\\times 10^{4} (ou normal se exp pequeno)."""
+    """LaTeX: 1.23\\times 10^{4} (ou normal se exp pequeno)."""
     if x == 0:
         return "0"
     mant, exp = sci_parts(x)
@@ -30,8 +29,12 @@ def sci_latex(x, sig=3):
         return f"{x:.{sig}g}"
     return f"{mant:.{sig}g}\\times 10^{{{exp}}}"
 
+def pt_decimal(s: str) -> str:
+    """Troca ponto por vírgula para exibição."""
+    return s.replace(".", ",")
+
 # ==========================================================
-# Materiais (ρ em 10^-8 Ω·m), conforme tabela fornecida
+# Materiais (ρ em 10^-8 Ω·m) - CARBONO REMOVIDO
 # ==========================================================
 materials_rho10 = {
     "Cobre": 1.72,
@@ -42,19 +45,35 @@ materials_rho10 = {
     "Latão": 8.0,
     "Mercúrio": 96.0,
     "Liga cobre-níquel (Cu-Ni)": 44.0,
-    "Liga níquel-cromo (Ni-Cr)": 110.0,
-    "Carbono": 3500.0
+    "Liga níquel-cromo (Ni-Cr)": 110.0
 }
 
 # ==========================================================
-# Página / Cabeçalho
+# Página
 # ==========================================================
 st.set_page_config(layout="wide")
 
+# (3) CSS para aumentar a largura do selectbox (evitar reticências)
+st.markdown(
+    """
+    <style>
+      /* aumenta largura do selectbox (BaseWeb) */
+      div[data-baseweb="select"] > div {
+        min-width: 560px !important;
+      }
+      /* em telas pequenas, usa 100% */
+      @media (max-width: 768px){
+        div[data-baseweb="select"] > div { min-width: 100% !important; }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 col1, col2 = st.columns([1.2, 4.0])
 with col1:
-    # (7) Logo maior
-    st.image("logo_maua.png", width=220)
+    # Logo maior (mantido)
+    st.image("logo_maua.png", width=240)
 with col2:
     st.title("Simulador Resistividade Física II")
     st.markdown("**Estude a resistência em função do material e da geometria**")
@@ -63,68 +82,68 @@ st.divider()
 
 # ==========================================================
 # Seção Controle
-# (6) Ajuste de sliders para manter gráfico legível e ponto sempre visível
-# Eixos fixos: I até 50 A e V até 3.2 V
+# (4) Ajuste de ranges para gráfico com escala fixa ficar sempre bom
 # ==========================================================
 st.header("🔧 Controle")
 
 c1, c2, c3, c4 = st.columns(4)
 
+# Tensão limitada para manter ponto e reta sempre dentro do gráfico fixo
 with c1:
     V = st.slider("Tensão da fonte V (V)", 0.1, 3.0, 1.5, 0.1)
 
+# D e L ajustados para evitar R muito pequena (reta muito horizontal)
+# e também evitar R muito grande (reta muito vertical demais)
 with c2:
-    # Ajustado para evitar correntes absurdas em materiais muito condutores
-    D_mm = st.slider("Diâmetro do resistor D (mm)", 0.10, 0.60, 0.30, 0.01)
+    D_mm = st.slider("Diâmetro do resistor D (mm)", 0.20, 0.60, 0.35, 0.01)
 
 with c3:
-    L = st.slider("Comprimento do resistor L (m)", 1.0, 5.0, 2.0, 0.1)
+    L = st.slider("Comprimento do resistor L (m)", 1.0, 3.0, 2.0, 0.1)
 
-# (1) Selectbox renomeado e com ρ junto ao nome
-display_options = [
-    f"{name} — ρ = {materials_rho10[name]:g} (10^-8 Ω·m)"
-    for name in materials_rho10.keys()
-]
-display_to_name = {display: name for display, name in zip(display_options, materials_rho10.keys())}
+# (3) Renomeado conforme solicitado e opções sem "ro=" nem unidade repetida
+# Mostra ro em ohm.m como valor numérico já convertido para Ω·m (com *10^n)
+display_options = []
+display_to_name = {}
+
+for name, rho10 in materials_rho10.items():
+    rho = rho10 * 1e-8  # Ω·m
+    opt = f"{name} — {pt_decimal(sci_text(rho))}"
+    display_options.append(opt)
+    display_to_name[opt] = name
 
 with c4:
     material_display = st.selectbox(
-        "Material do resistor e sua resistividade",
+        "Material do resistor e sua resistividade ro em ohm.m",
         display_options
     )
+
 material = display_to_name[material_display]
-rho10 = materials_rho10[material]           # em 10^-8 Ω·m
-rho = rho10 * 1e-8                          # Ω·m
+rho10 = materials_rho10[material]
+rho = rho10 * 1e-8
 
 # Conversões
-D = D_mm * 1e-3                             # m
+D = D_mm * 1e-3  # m
 
 # ==========================================================
 # Cálculos físicos
 # ==========================================================
-A = np.pi * D**2 / 4                        # m²
-R = rho * L / A                             # Ω
-I = V / R                                   # A
+A = np.pi * D**2 / 4
+R = rho * L / A
+I = V / R
 
 # ==========================================================
 # Seção Circuito (rolagem horizontal para celular)
 # ==========================================================
 st.header("🔌 Circuito")
 
-# wrapper HTML para rolagem horizontal por toque
 st.markdown(
     """
-    <div style="overflow-x:auto; -webkit-overflow-scrolling: touch; width: 100%; border: 0;">
+    <div style="overflow-x:auto; -webkit-overflow-scrolling: touch; width: 100%;">
     """,
     unsafe_allow_html=True
 )
 
-# -------------------------
-# Desenho: manter tudo dentro do quadro, mesmo variando L e D
-# (2) desloca fios/amperímetro com o resistor
-# (3) voltímetro acima do resistor
-# -------------------------
-# Área de desenho (fixa)
+# Área de desenho fixa (nada deve sair do quadro)
 XMIN, XMAX = 0, 16
 YMIN, YMAX = 0, 6
 
@@ -140,22 +159,21 @@ source_w, source_h = 2.4, 1.8
 res_start_x = 4.2
 res_center_y = 3.1
 
-# Escala do comprimento desenhado do resistor:
-L_min, L_max = 1.0, 5.0
-res_draw_min = 2.2
-res_draw_max = 6.2
+# Resistor desenhado: comprimento proporcional a L
+L_min, L_max = 1.0, 3.0
+res_draw_min = 2.4
+res_draw_max = 6.0
 res_draw_len = res_draw_min + (L - L_min) * (res_draw_max - res_draw_min) / (L_max - L_min)
 
-# Resistência: diâmetro (espessura) desenhada
-D_min_mm, D_max_mm = 0.10, 0.60
-res_draw_thick_min = 0.35
-res_draw_thick_max = 0.85
-res_draw_thick = res_draw_thick_min + (D_mm - D_min_mm) * (res_draw_thick_max - res_draw_thick_min) / (D_max_mm - D_min_mm)
+# espessura proporcional a D
+D_min_mm, D_max_mm = 0.20, 0.60
+res_thick_min = 0.38
+res_thick_max = 0.88
+res_draw_thick = res_thick_min + (D_mm - D_min_mm) * (res_thick_max - res_thick_min) / (D_max_mm - D_min_mm)
 
 res_end_x = res_start_x + res_draw_len
 
-# Amperímetro e fios acompanham o final do resistor, mas sem sair do quadro
-# Reservas de espaço à direita:
+# Amperímetro acompanha o final do resistor, respeitando limites
 amm_r = 0.55
 right_margin = 0.7
 wire_gap = 0.8
@@ -163,7 +181,7 @@ wire_gap = 0.8
 amm_cx = min(res_end_x + wire_gap + amm_r, XMAX - right_margin - amm_r)
 amm_cy = res_center_y
 
-# Ajuste: se o amperímetro "encostar", comprimir um pouco o resistor desenhado (segurança)
+# segurança: se resistor encostar no limite por causa do amperímetro, encurta desenho
 max_allowed_res_end = amm_cx - wire_gap - amm_r
 if res_end_x > max_allowed_res_end:
     res_draw_len = max_allowed_res_end - res_start_x
@@ -173,12 +191,14 @@ if res_end_x > max_allowed_res_end:
 # Fonte com visor
 # -------------------------
 ax.add_patch(Rectangle((source_x, source_y), source_w, source_h, fill=False, linewidth=2))
-# visor interno
-ax.add_patch(Rectangle((source_x + 0.25, source_y + 0.95), source_w - 0.5, 0.65, fill=False, linewidth=1.6))
-ax.text(source_x + source_w/2, source_y + 1.275, f"{V:.2f} V", ha="center", va="center", fontsize=11)
-ax.text(source_x + source_w/2, source_y + 0.55, "Fonte", ha="center", va="center", fontsize=11)
+ax.add_patch(Rectangle((source_x + 0.25, source_y + 0.95), source_w - 0.5, 0.65,
+                       fill=False, linewidth=1.6))
+ax.text(source_x + source_w/2, source_y + 1.275, f"{V:.2f} V",
+        ha="center", va="center", fontsize=11)
+ax.text(source_x + source_w/2, source_y + 0.55, "Fonte",
+        ha="center", va="center", fontsize=11)
 
-# Fio fonte → resistor (linha principal)
+# Fio fonte → resistor
 x0 = source_x + source_w
 ax.plot([x0, res_start_x], [res_center_y, res_center_y], linewidth=2)
 
@@ -193,78 +213,65 @@ ax.add_patch(Rectangle(
     linewidth=2
 ))
 
-# Rótulos do resistor (sem sobrepor)
 ax.text(res_start_x + res_draw_len/2, res_center_y + 1.15,
-        f"R = {sci_text(R)} Ω",
-        ha="center", va="center", fontsize=11)
-
+        f"R = {sci_text(R)} Ω", ha="center", va="center", fontsize=11)
 ax.text(res_start_x + res_draw_len/2, res_center_y - 1.10,
-        f"L = {L:.2f} m   |   D = {D_mm:.2f} mm",
-        ha="center", va="center", fontsize=10)
+        f"L = {L:.2f} m   |   D = {D_mm:.2f} mm", ha="center", va="center", fontsize=10)
 
-# -------------------------
-# Fio resistor → amperímetro (acompanha res_end_x)
-# -------------------------
+# Fio resistor → amperímetro
 ax.plot([res_end_x, amm_cx - amm_r], [res_center_y, res_center_y], linewidth=2)
 
 # -------------------------
-# Amperímetro + valor de corrente acima
+# Amperímetro + corrente
 # -------------------------
 ax.add_patch(Circle((amm_cx, amm_cy), amm_r, fill=False, linewidth=2))
 ax.text(amm_cx, amm_cy, "A", ha="center", va="center", fontsize=14)
 ax.text(amm_cx, amm_cy + 1.25, f"I = {sci_text(I)} A", ha="center", va="center", fontsize=11)
 
-# -------------------------
-# Fio amperímetro → retorno → fonte (loop inferior)
-# -------------------------
-# fio à direita do amperímetro
+# Fio amperímetro → retorno → fonte
 right_x = min(amm_cx + amm_r + 1.2, XMAX - right_margin)
 ax.plot([amm_cx + amm_r, right_x], [amm_cy, amm_cy], linewidth=2)
 
-# desce
 bottom_y = 1.0
 ax.plot([right_x, right_x], [amm_cy, bottom_y], linewidth=2)
-
-# volta para a esquerda até abaixo da fonte
 ax.plot([right_x, source_x], [bottom_y, bottom_y], linewidth=2)
-
-# sobe para fechar na fonte
 ax.plot([source_x, source_x], [bottom_y, source_y], linewidth=2)
 
 # -------------------------
-# Voltímetro em paralelo (3) acima do resistor
+# Voltímetro em paralelo acima do resistor
+# (1) agora com fio horizontal no topo aparecendo
 # -------------------------
-# nós de conexão (entrada e saída do resistor)
 node_in_x = res_start_x
 node_out_x = res_end_x
-
-# trilhas subindo
 vm_y = 5.0
+
+# subidas
 ax.plot([node_in_x, node_in_x], [res_center_y, vm_y], linewidth=1.6)
 ax.plot([node_out_x, node_out_x], [res_center_y, vm_y], linewidth=1.6)
 
-# círculo do voltímetro no meio acima
+# (1) fio horizontal superior (agora aparece!)
+ax.plot([node_in_x, node_out_x], [vm_y, vm_y], linewidth=1.6)
+
+# símbolo do voltímetro no meio desse fio
 vm_cx = (node_in_x + node_out_x) / 2
 vm_cy = vm_y
-ax.add_patch(Circle((vm_cx, vm_cy), 0.50, fill=False, linewidth=2))
+ax.add_patch(Circle((vm_cx, vm_cy), 0.50, facecolor="white", edgecolor="black", linewidth=2))
 ax.text(vm_cx, vm_cy, "V", ha="center", va="center", fontsize=14)
 
-# Indicação de tensão acima do voltímetro (sem sobreposição)
+# indicação de tensão acima do voltímetro
 ax.text(vm_cx, vm_cy + 0.85, f"V = {V:.2f} V", ha="center", va="center", fontsize=11)
 
 st.pyplot(fig, use_container_width=False)
-
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================================
-# Seção Cálculos (4) corrigir unidade e (5) mostrar substituição de R
+# Seção Cálculos
 # ==========================================================
 st.header("📐 Cálculos")
 
-# --- Área
+# Área
 st.subheader("Área")
 st.latex(r"A = \pi \cdot \frac{D^2}{4}")
-
 st.markdown(
     rf"""
 **Substituindo:**
@@ -272,26 +279,20 @@ $$A = \pi \cdot \frac{{({sci_latex(D)}\;\text{{m}})^2}}{{4}} = {sci_latex(A)}\;\
 """
 )
 
-# --- Resistência
+# Resistência (com valores substituídos)
 st.subheader("Resistência")
 st.latex(r"R = \rho \cdot \frac{L}{A}")
 
-# rho10 * 10^-8
-rho_latex = rf"{rho10:g}\times 10^{{-8}}"
 st.markdown(
     rf"""
-**Resistividade do material selecionado:**
-$$\rho = {rho_latex}\;\Omega\cdot\text{{m}}$$
-
 **Substituindo:**
-$$R = \left({rho_latex}\right)\cdot\frac{{({L:.2f}\;\text{{m}})}}{{({sci_latex(A)}\;\text{{m}}^2)}} = {sci_latex(R)}\;\Omega$$
+$$R = ({sci_latex(rho)}\;\Omega\cdot\text{{m}})\cdot\frac{{({L:.2f}\;\text{{m}})}}{{({sci_latex(A)}\;\text{{m}}^2)}} = {sci_latex(R)}\;\Omega$$
 """
 )
 
-# --- Lei de Ohm
+# Lei de Ohm
 st.subheader("Lei de Ohm")
 st.latex(r"V = R\cdot I \;\;\Rightarrow\;\; I = \frac{V}{R}")
-
 st.markdown(
     rf"""
 **Substituindo:**
@@ -300,32 +301,36 @@ $$I=\frac{{({V:.2f}\;\text{{V}})}}{{({sci_latex(R)}\;\Omega)}} = {sci_latex(I)}\
 )
 
 # ==========================================================
-# Gráfico V x I (6) eixos fixos e sempre visível
+# Gráfico V x I
+# (4) Eixos fixos pensados nos extremos SEM carbono
+#      e reta sempre desenhada até a tensão da fonte (V atual)
 # ==========================================================
 st.header("📊 Gráfico: Tensão × Corrente (V×I)")
 
-I_MAX = 50.0
-V_MAX = 3.2
+# Eixos fixos:
+# - V vai até 3.0 V (máximo do slider)
+# - I deve acomodar o caso de menor resistência (maior corrente) com folga
+#   Com ranges escolhidos, o maior I tipicamente fica ~até 40-50 A.
+V_AXIS_MAX = 3.0
+I_AXIS_MAX = 60.0
 
-I_line = np.linspace(0, I_MAX, 400)
+# Reta V=R*I desenhada do (0,0) até atingir a tensão da fonte (V atual)
+I_end = V / R  # corrente correspondente à tensão da fonte
+I_line = np.linspace(0, min(I_end, I_AXIS_MAX), 250)
 V_line = R * I_line
 
-# Para não “estourar”, desenha só o trecho visível no eixo V
-mask = V_line <= V_MAX
-I_plot = I_line[mask]
-V_plot = V_line[mask]
-
 fig2, ax2 = plt.subplots(figsize=(8, 4.2))
-ax2.plot(I_plot, V_plot, label="V = R·I")
+ax2.plot(I_line, V_line, label="V = R·I")
 
-# ponto de operação (garantido dentro pelos limites dos sliders)
-ax2.scatter([I], [V], color="red", zorder=3, label="Ponto de operação")
+# ponto de operação (I_end, V)
+ax2.scatter([min(I_end, I_AXIS_MAX)], [V], color="red", zorder=3, label="Ponto de operação")
 
-ax2.set_xlim(0, I_MAX)
-ax2.set_ylim(0, V_MAX)
+ax2.set_xlim(0, I_AXIS_MAX)
+ax2.set_ylim(0, V_AXIS_MAX)
 ax2.set_xlabel("Corrente (A)")
 ax2.set_ylabel("Tensão (V)")
 ax2.grid(True)
 ax2.legend()
 
 st.pyplot(fig2)
+``

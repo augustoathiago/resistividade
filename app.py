@@ -53,15 +53,11 @@ materials_rho10 = {
 # ==========================================================
 st.set_page_config(layout="wide")
 
-# (3) CSS para aumentar a largura do selectbox (evitar reticências)
+# CSS para aumentar a largura do selectbox (evitar reticências)
 st.markdown(
     """
     <style>
-      /* aumenta largura do selectbox (BaseWeb) */
-      div[data-baseweb="select"] > div {
-        min-width: 560px !important;
-      }
-      /* em telas pequenas, usa 100% */
+      div[data-baseweb="select"] > div { min-width: 560px !important; }
       @media (max-width: 768px){
         div[data-baseweb="select"] > div { min-width: 100% !important; }
       }
@@ -72,7 +68,6 @@ st.markdown(
 
 col1, col2 = st.columns([1.2, 4.0])
 with col1:
-    # Logo maior (mantido)
     st.image("logo_maua.png", width=240)
 with col2:
     st.title("Simulador Resistividade Física II")
@@ -82,29 +77,23 @@ st.divider()
 
 # ==========================================================
 # Seção Controle
-# (4) Ajuste de ranges para gráfico com escala fixa ficar sempre bom
 # ==========================================================
 st.header("🔧 Controle")
 
 c1, c2, c3, c4 = st.columns(4)
 
-# Tensão limitada para manter ponto e reta sempre dentro do gráfico fixo
 with c1:
     V = st.slider("Tensão da fonte V (V)", 0.1, 3.0, 1.5, 0.1)
 
-# D e L ajustados para evitar R muito pequena (reta muito horizontal)
-# e também evitar R muito grande (reta muito vertical demais)
 with c2:
     D_mm = st.slider("Diâmetro do resistor D (mm)", 0.20, 0.60, 0.35, 0.01)
 
 with c3:
     L = st.slider("Comprimento do resistor L (m)", 1.0, 3.0, 2.0, 0.1)
 
-# (3) Renomeado conforme solicitado e opções sem "ro=" nem unidade repetida
-# Mostra ro em ohm.m como valor numérico já convertido para Ω·m (com *10^n)
+# Selectbox renomeado e opções sem "ro=" nem unidade repetida
 display_options = []
 display_to_name = {}
-
 for name, rho10 in materials_rho10.items():
     rho = rho10 * 1e-8  # Ω·m
     opt = f"{name} — {pt_decimal(sci_text(rho))}"
@@ -143,7 +132,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Área de desenho fixa (nada deve sair do quadro)
+# Área de desenho fixa
 XMIN, XMAX = 0, 16
 YMIN, YMAX = 0, 6
 
@@ -187,9 +176,7 @@ if res_end_x > max_allowed_res_end:
     res_draw_len = max_allowed_res_end - res_start_x
     res_end_x = res_start_x + res_draw_len
 
-# -------------------------
 # Fonte com visor
-# -------------------------
 ax.add_patch(Rectangle((source_x, source_y), source_w, source_h, fill=False, linewidth=2))
 ax.add_patch(Rectangle((source_x + 0.25, source_y + 0.95), source_w - 0.5, 0.65,
                        fill=False, linewidth=1.6))
@@ -202,9 +189,7 @@ ax.text(source_x + source_w/2, source_y + 0.55, "Fonte",
 x0 = source_x + source_w
 ax.plot([x0, res_start_x], [res_center_y, res_center_y], linewidth=2)
 
-# -------------------------
 # Resistor
-# -------------------------
 ax.add_patch(Rectangle(
     (res_start_x, res_center_y - res_draw_thick/2),
     res_draw_len,
@@ -221,9 +206,7 @@ ax.text(res_start_x + res_draw_len/2, res_center_y - 1.10,
 # Fio resistor → amperímetro
 ax.plot([res_end_x, amm_cx - amm_r], [res_center_y, res_center_y], linewidth=2)
 
-# -------------------------
 # Amperímetro + corrente
-# -------------------------
 ax.add_patch(Circle((amm_cx, amm_cy), amm_r, fill=False, linewidth=2))
 ax.text(amm_cx, amm_cy, "A", ha="center", va="center", fontsize=14)
 ax.text(amm_cx, amm_cy + 1.25, f"I = {sci_text(I)} A", ha="center", va="center", fontsize=11)
@@ -237,28 +220,19 @@ ax.plot([right_x, right_x], [amm_cy, bottom_y], linewidth=2)
 ax.plot([right_x, source_x], [bottom_y, bottom_y], linewidth=2)
 ax.plot([source_x, source_x], [bottom_y, source_y], linewidth=2)
 
-# -------------------------
-# Voltímetro em paralelo acima do resistor
-# (1) agora com fio horizontal no topo aparecendo
-# -------------------------
+# Voltímetro em paralelo acima do resistor (com fio horizontal)
 node_in_x = res_start_x
 node_out_x = res_end_x
 vm_y = 5.0
 
-# subidas
 ax.plot([node_in_x, node_in_x], [res_center_y, vm_y], linewidth=1.6)
 ax.plot([node_out_x, node_out_x], [res_center_y, vm_y], linewidth=1.6)
-
-# (1) fio horizontal superior (agora aparece!)
 ax.plot([node_in_x, node_out_x], [vm_y, vm_y], linewidth=1.6)
 
-# símbolo do voltímetro no meio desse fio
 vm_cx = (node_in_x + node_out_x) / 2
 vm_cy = vm_y
 ax.add_patch(Circle((vm_cx, vm_cy), 0.50, facecolor="white", edgecolor="black", linewidth=2))
 ax.text(vm_cx, vm_cy, "V", ha="center", va="center", fontsize=14)
-
-# indicação de tensão acima do voltímetro
 ax.text(vm_cx, vm_cy + 0.85, f"V = {V:.2f} V", ha="center", va="center", fontsize=11)
 
 st.pyplot(fig, use_container_width=False)
@@ -269,7 +243,6 @@ st.markdown("</div>", unsafe_allow_html=True)
 # ==========================================================
 st.header("📐 Cálculos")
 
-# Área
 st.subheader("Área")
 st.latex(r"A = \pi \cdot \frac{D^2}{4}")
 st.markdown(
@@ -279,10 +252,8 @@ $$A = \pi \cdot \frac{{({sci_latex(D)}\;\text{{m}})^2}}{{4}} = {sci_latex(A)}\;\
 """
 )
 
-# Resistência (com valores substituídos)
 st.subheader("Resistência")
 st.latex(r"R = \rho \cdot \frac{L}{A}")
-
 st.markdown(
     rf"""
 **Substituindo:**
@@ -290,7 +261,6 @@ $$R = ({sci_latex(rho)}\;\Omega\cdot\text{{m}})\cdot\frac{{({L:.2f}\;\text{{m}})
 """
 )
 
-# Lei de Ohm
 st.subheader("Lei de Ohm")
 st.latex(r"V = R\cdot I \;\;\Rightarrow\;\; I = \frac{V}{R}")
 st.markdown(
@@ -302,28 +272,30 @@ $$I=\frac{{({V:.2f}\;\text{{V}})}}{{({sci_latex(R)}\;\Omega)}} = {sci_latex(I)}\
 
 # ==========================================================
 # Gráfico V x I
-# (4) Eixos fixos pensados nos extremos SEM carbono
-#      e reta sempre desenhada até a tensão da fonte (V atual)
+# Melhoria pedida:
+# - reta SEMPRE até 3,0 V (mesmo se V da fonte for menor)
+# - ponto de operação muda com V
 # ==========================================================
 st.header("📊 Gráfico: Tensão × Corrente (V×I)")
 
-# Eixos fixos:
-# - V vai até 3.0 V (máximo do slider)
-# - I deve acomodar o caso de menor resistência (maior corrente) com folga
-#   Com ranges escolhidos, o maior I tipicamente fica ~até 40-50 A.
 V_AXIS_MAX = 3.0
 I_AXIS_MAX = 60.0
 
-# Reta V=R*I desenhada do (0,0) até atingir a tensão da fonte (V atual)
-I_end = V / R  # corrente correspondente à tensão da fonte
-I_line = np.linspace(0, min(I_end, I_AXIS_MAX), 250)
+# reta até V=3.0 V (independente de V da fonte)
+I_line_max_for_axisV = V_AXIS_MAX / R
+I_line_end = min(I_line_max_for_axisV, I_AXIS_MAX)
+
+I_line = np.linspace(0, I_line_end, 400)
 V_line = R * I_line
+
+# ponto de operação
+I_op = V / R
 
 fig2, ax2 = plt.subplots(figsize=(8, 4.2))
 ax2.plot(I_line, V_line, label="V = R·I")
 
-# ponto de operação (I_end, V)
-ax2.scatter([min(I_end, I_AXIS_MAX)], [V], color="red", zorder=3, label="Ponto de operação")
+# ponto (apenas ele depende do V)
+ax2.scatter([min(I_op, I_AXIS_MAX)], [V], color="red", zorder=3, label="Ponto de operação")
 
 ax2.set_xlim(0, I_AXIS_MAX)
 ax2.set_ylim(0, V_AXIS_MAX)
@@ -333,3 +305,4 @@ ax2.grid(True)
 ax2.legend()
 
 st.pyplot(fig2)
+``

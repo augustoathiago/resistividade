@@ -102,7 +102,7 @@ for name, rho10 in materials_rho10.items():
 
 with c4:
     material_display = st.selectbox(
-        "Material do resistor e sua resistividade \rho (Ω.m)",
+        "Material do resistor e sua resistividade ρ (Ω.m)",
         display_options
     )
 

@@ -200,7 +200,7 @@ ax.text(source_x + source_w/2, source_y + 0.55, "Fonte",
 
 # Fio fonte → resistor
 x0 = source_x + source_w
-ax.plot([x0, res_start_x], [res_center_y, res_center_y], linewidth=2, color="yellow")
+ax.plot([x0, res_start_x], [res_center_y, res_center_y], linewidth=2, color="green")
 
 # Resistor
 ax.add_patch(Rectangle(

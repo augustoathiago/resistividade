@@ -1,21 +1,24 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
-import altair as alt
-import math
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Circle
 
-# ---------------------------
-# Constantes
-# ---------------------------
-V_MAX = 30.0
-X_MAX_mA = 40.0
-CHART_HEIGHT = 360
-CHART_WIDTH = 980
+# =========================
+# Função para formatar números em notação científica *10^n
+# =========================
+def sci_format(x, unit=""):
+    if x == 0:
+        return f"0 {unit}"
+    exp = int(np.floor(np.log10(abs(x))))
+    mant = x / 10**exp
+    if abs(exp) <= 2:
+        return f"{x:.4g} {unit}"
+    return f"{mant:.3g}*10^{exp} {unit}"
 
-# ---------------------------
-# Materiais (ρ em 10^-8 Ω·m)
-# ---------------------------
-MATERIAIS = {
+# =========================
+# Tabela de materiais (ρ em 10^-8 Ω·m)
+# =========================
+materials = {
     "Cobre": 1.72,
     "Ouro": 2.44,
     "Alumínio": 2.82,
@@ -25,174 +28,151 @@ MATERIAIS = {
     "Mercúrio": 96.0,
     "Liga cobre-níquel (Cu-Ni)": 44.0,
     "Liga níquel-cromo (Ni-Cr)": 110.0,
-    "Carbono": 3500.0,
+    "Carbono": 3500.0
 }
 
-# ---------------------------
-# Configuração da página
-# ---------------------------
-st.set_page_config(
-    page_title="Simulador de Resistividade – Física II",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+# =========================
+# Layout inicial
+# =========================
+st.set_page_config(layout="wide")
 
-# ---------------------------
-# Formatação
-# ---------------------------
-def fmt_sig(x, sig=3):
-    if x == 0:
-        return "0.00"
-    return f"{x:.{sig}g}"
-
-# ---------------------------
-# Estado inicial
-# ---------------------------
-if "V" not in st.session_state:
-    st.session_state["V"] = 5.0
-if "D" not in st.session_state:
-    st.session_state["D"] = 1.0  # mm
-if "L" not in st.session_state:
-    st.session_state["L"] = 1.0  # m
-if "material" not in st.session_state:
-    st.session_state["material"] = "Cobre"
-if "sw" not in st.session_state:
-    st.session_state["sw"] = True
-
-# ---------------------------
-# Cabeçalho
-# ---------------------------
-st.title("Simulador de Resistividade – Física II")
-st.write("Estudo da resistência elétrica a partir do material e da geometria do condutor.")
-st.divider()
-
-# ---------------------------
-# Controles
-# ---------------------------
-st.markdown("## Controles")
-
-with st.expander("Abrir/fechar painel de controles", expanded=True):
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 0.8])
-
-    with c1:
-        st.subheader("Tensão (V)")
-        st.slider("V", 0.0, V_MAX, st.session_state["V"], 0.1, key="V", label_visibility="collapsed")
-
-    with c2:
-        st.subheader("Diâmetro (mm)")
-        st.slider("D", 0.1, 5.0, st.session_state["D"], 0.1, key="D", label_visibility="collapsed")
-
-    with c3:
-        st.subheader("Comprimento (m)")
-        st.slider("L", 0.1, 5.0, st.session_state["L"], 0.1, key="L", label_visibility="collapsed")
-
-    with c4:
-        st.subheader("Material")
-        st.selectbox("", list(MATERIAIS.keys()), key="material")
-        st.toggle("Circuito fechado (ON)", key="sw")
+col1, col2 = st.columns([1, 4])
+with col1:
+    st.image("logo_maua.png", width=140)
+with col2:
+    st.title("Simulador Resistividade Física II")
+    st.markdown("**Estude a resistência em função do material e da geometria**")
 
 st.divider()
 
-# ---------------------------
-# Modelo físico
-# ---------------------------
-V = st.session_state["V"]
-D_mm = st.session_state["D"]
-L = st.session_state["L"]
-rho = MATERIAIS[st.session_state["material"]] * 1e-8
+# =========================
+# Seção Controle
+# =========================
+st.header("🔧 Controle")
 
-D = D_mm / 1000  # m
-A = math.pi * D**2 / 4
-R = rho * L / A
-
-if st.session_state["sw"]:
-    I = V / R
-    V_R = V
-else:
-    I = 0.0
-    V_R = 0.0
-
-I_mA = I * 1000
-
-# ---------------------------
-# Circuito (visual)
-# ---------------------------
-st.markdown("## Circuito (visual)")
-
-# Escalas visuais
-res_len = int(400 + 300 * (L / 5))
-res_thick = int(20 + 80 * (D_mm / 5))
-
-svg = f"""
-<svg width="100%" height="280" viewBox="0 0 1200 280"
-     xmlns="http://www.w3.org/2000/svg">
-
-  <line x1="50" y1="140" x2="250" y2="140" stroke="#22c55e" stroke-width="12"/>
-  <rect x="250" y="{140-res_thick/2}" width="{res_len}" height="{res_thick}"
-        fill="#111827" stroke="#fbbf24" stroke-width="6" rx="18"/>
-  <line x1="{250+res_len}" y1="140" x2="1150" y2="140" stroke="#22c55e" stroke-width="12"/>
-
-  <text x="{250+res_len/2}" y="{140-res_thick/2-10}" fill="white" font-size="18" text-anchor="middle">
-    Resistor — {st.session_state["material"]}
-  </text>
-</svg>
-"""
-
-st.components.v1.html(svg, height=300)
-
-# ---------------------------
-# Cálculos
-# ---------------------------
-st.markdown("## Cálculos")
-
-st.markdown("### Área")
-st.latex(r"A = \frac{\pi D^2}{4}")
-st.latex(
-    rf"A = \frac{{\pi ({fmt_sig(D)})^2}}{{4}} = {fmt_sig(A)}\ \text{{m}}^2"
-)
-
-st.markdown("### Resistência")
-st.latex(r"R = \rho \frac{L}{A}")
-st.latex(
-    rf"R = ({fmt_sig(rho)}) \cdot \frac{{{fmt_sig(L)}}}{{{fmt_sig(A)}}} = {fmt_sig(R)}\ \Omega"
-)
-
-st.markdown("### Lei de Ohm")
-st.latex(r"V = RI \Rightarrow I = \frac{V}{R}")
-st.latex(
-    rf"I = \frac{{{fmt_sig(V)}}}{{{fmt_sig(R)}}} = {fmt_sig(I)}\ \text{{A}}"
-)
-
-# ---------------------------
-# Gráfico V × I (inalterado)
-# ---------------------------
-st.markdown("## Gráfico: Tensão × Corrente (V×I)")
-
-I_line_mA = np.linspace(0, X_MAX_mA, 400)
-V_line = R * (I_line_mA / 1000)
-V_line = np.where(V_line <= V_MAX, V_line, np.nan)
-
-df_line = pd.DataFrame({"I (mA)": I_line_mA, "V (V)": V_line})
-df_point = pd.DataFrame({"I (mA)": [I_mA], "V (V)": [V_R]})
-
-chart = (
-    alt.Chart(df_line)
-    .mark_line()
-    .encode(x="I (mA)", y="V (V)")
-    + alt.Chart(df_point).mark_point(size=150, color="red")
-).properties(width=CHART_WIDTH, height=CHART_HEIGHT)
-
-st.components.v1.html(chart.to_html(), height=CHART_HEIGHT + 120, scrolling=True)
-
-# ---------------------------
-# Leituras (inalterado)
-# ---------------------------
-st.markdown("### Leituras")
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 
 with c1:
-    st.metric("Corrente", f"{fmt_sig(I_mA)} mA")
+    V = st.slider("Tensão da fonte V (V)", 0.1, 20.0, 5.0, 0.1)
+
 with c2:
-    st.metric("Tensão no resistor", f"{fmt_sig(V_R)} V")
+    D_mm = st.slider("Diâmetro do resistor D (mm)", 0.1, 5.0, 1.0, 0.1)
+
 with c3:
-    st.metric("Resistência", f"{fmt_sig(R)} Ω")
+    L = st.slider("Comprimento do resistor L (m)", 0.1, 5.0, 1.0, 0.1)
+
+with c4:
+    material = st.selectbox("Material do resistor", list(materials.keys()))
+
+rho = materials[material] * 1e-8  # Ω·m
+D = D_mm * 1e-3                   # m
+
+# =========================
+# Cálculos físicos
+# =========================
+A = np.pi * D**2 / 4
+R = rho * L / A
+I = V / R
+
+# =========================
+# Seção Circuito (rolável horizontalmente)
+# =========================
+st.header("🔌 Circuito")
+
+st.markdown(
+    """
+    <div style="overflow-x: auto; width: 100%;">
+    """,
+    unsafe_allow_html=True
+)
+
+fig, ax = plt.subplots(figsize=(14, 4))
+ax.set_xlim(0, 14)
+ax.set_ylim(0, 4)
+ax.axis("off")
+
+# Fonte
+ax.add_patch(Rectangle((0.5, 1.5), 2, 1.2, fill=False, linewidth=2))
+ax.text(1.5, 2.1, f"Fonte\n{V:.2f} V", ha="center", va="center")
+
+# Fio fonte → resistor
+ax.plot([2.5, 4], [2.1, 2.1], linewidth=2)
+
+# Resistor
+res_len = 2 + L
+res_diam = 0.4 + D_mm / 5
+ax.add_patch(Rectangle((4, 2.1 - res_diam/2), res_len, res_diam, fill=False, linewidth=2))
+ax.text(4 + res_len/2, 2.8, f"R = {sci_format(R, 'Ω')}", ha="center")
+
+# Fio resistor → amperímetro
+ax.plot([4 + res_len, 8], [2.1, 2.1], linewidth=2)
+
+# Amperímetro
+ax.add_patch(Circle((9, 2.1), 0.5, fill=False, linewidth=2))
+ax.text(9, 2.1, "A", ha="center", va="center", fontsize=14)
+ax.text(9, 3.0, f"I = {sci_format(I, 'A')}", ha="center")
+
+# Fio amperímetro → fonte
+ax.plot([9.5, 11.5], [2.1, 2.1], linewidth=2)
+ax.plot([11.5, 11.5], [2.1, 0.8], linewidth=2)
+ax.plot([11.5, 0.5], [0.8, 0.8], linewidth=2)
+ax.plot([0.5, 0.5], [0.8, 1.5], linewidth=2)
+
+# Voltímetro em paralelo
+ax.plot([4, 4], [2.1, 0.8], linewidth=1.5)
+ax.plot([4 + res_len, 4 + res_len], [2.1, 0.8], linewidth=1.5)
+ax.add_patch(Circle((4 + res_len/2, 0.8), 0.45, fill=False, linewidth=2))
+ax.text(4 + res_len/2, 0.8, "V", ha="center", va="center", fontsize=14)
+ax.text(4 + res_len/2, 0.2, f"{V:.2f} V", ha="center")
+
+st.pyplot(fig)
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================
+# Seção Cálculos
+# =========================
+st.header("📐 Cálculos")
+
+st.subheader("Área")
+st.latex(r"A = \pi \cdot \frac{D^2}{4}")
+st.markdown(
+    f"""
+    $$A = \\pi \\cdot \\frac{{({D:.3g})^2}}{{4}} = {sci_format(A, 'm^2')}$$
+    """
+)
+
+st.subheader("Resistência")
+st.latex(r"R = \rho \cdot \frac{L}{A}")
+st.markdown(
+    f"""
+    $$R = ({sci_format(rho, 'Ω·m')}) \\cdot \\frac{{{L}}}{{{sci_format(A)}}}
+    = {sci_format(R, 'Ω')}$$
+    """
+)
+
+st.subheader("Lei de Ohm")
+st.latex(r"V = R \cdot I \;\;\Rightarrow\;\; I = \frac{V}{R}")
+st.markdown(
+    f"""
+    $$I = \\frac{{{V}}}{{{sci_format(R)}}} = {sci_format(I, 'A')}$$
+    """
+)
+
+# =========================
+# Gráfico V x I
+# =========================
+st.header("📊 Gráfico: Tensão × Corrente (V×I)")
+
+I_vals = np.linspace(0, I*1.2, 50)
+V_vals = R * I_vals
+
+fig2, ax2 = plt.subplots()
+ax2.plot(I_vals, V_vals, label="V = R·I")
+ax2.scatter([I], [V], color="red", zorder=3, label="Ponto de operação")
+ax2.set_xlabel("Corrente (A)")
+ax2.set_ylabel("Tensão (V)")
+ax2.legend()
+ax2.grid(True)
+
+st.pyplot(fig2)

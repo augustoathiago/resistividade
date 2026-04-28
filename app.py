@@ -53,13 +53,25 @@ materials_rho10 = {
 # ==========================================================
 st.set_page_config(layout="wide")
 
-# CSS para aumentar a largura do selectbox (evitar reticências)
+# CSS: deixar o selectbox mais compacto (metade da largura)
+# - min-width ~280px (antes era 560px)
+# - max-width impede esticar demais em telas grandes
 st.markdown(
     """
     <style>
-      div[data-baseweb="select"] > div { min-width: 560px !important; }
+      /* Deixa TODOS os selectbox mais compactos (você só tem 1 aqui) */
+      div[data-baseweb="select"] > div {
+        min-width: 280px !important;   /* metade de 560px */
+        max-width: 320px !important;   /* não estica demais */
+        width: 100% !important;        /* respeita a coluna */
+      }
+
+      /* No celular: ocupa 100% */
       @media (max-width: 420px){
-        div[data-baseweb="select"] > div { min-width: 100% !important; }
+        div[data-baseweb="select"] > div {
+          min-width: 100% !important;
+          max-width: 100% !important;
+        }
       }
     </style>
     """,
@@ -80,7 +92,8 @@ st.divider()
 # ==========================================================
 st.header("🔧 Controle")
 
-c1, c2, c3, c4 = st.columns(4)
+# Coluna 4 um pouco menor para reduzir ainda mais a largura do selectbox
+c1, c2, c3, c4 = st.columns([1.0, 1.0, 1.0, 0.80])
 
 with c1:
     V = st.slider("Tensão da fonte V (V)", 0.1, 3.0, 1.5, 0.1)
@@ -272,29 +285,23 @@ $$I=\frac{{({V:.2f}\;\text{{V}})}}{{({sci_latex(R)}\;\Omega)}} = {sci_latex(I)}\
 
 # ==========================================================
 # Gráfico V x I
-# Melhoria pedida:
-# - reta SEMPRE até 3,0 V (mesmo se V da fonte for menor)
-# - ponto de operação muda com V
 # ==========================================================
 st.header("📊 Gráfico: Tensão × Corrente (V×I)")
 
 V_AXIS_MAX = 3.0
 I_AXIS_MAX = 60.0
 
-# reta até V=3.0 V (independente de V da fonte)
 I_line_max_for_axisV = V_AXIS_MAX / R
 I_line_end = min(I_line_max_for_axisV, I_AXIS_MAX)
 
 I_line = np.linspace(0, I_line_end, 400)
 V_line = R * I_line
 
-# ponto de operação
 I_op = V / R
 
 fig2, ax2 = plt.subplots(figsize=(8, 4.2))
 ax2.plot(I_line, V_line, label="V = R·I")
 
-# ponto (apenas ele depende do V)
 ax2.scatter([min(I_op, I_AXIS_MAX)], [V], color="red", zorder=3, label="Ponto de operação")
 
 ax2.set_xlim(0, I_AXIS_MAX)
@@ -305,3 +312,4 @@ ax2.grid(True)
 ax2.legend()
 
 st.pyplot(fig2)
+``
